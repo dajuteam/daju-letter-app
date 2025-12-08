@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房仲開發信產生器 PRO v7.1</title>
+    
+    <!-- 1. 載入 Tailwind CSS (樣式庫) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 載入 React 與 ReactDOM (核心框架) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 3. 載入 Babel (讓瀏覽器看懂 JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 4. 定義自訂樣式 -->
+    <style>
+        /* 自定義捲軸樣式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* 隱藏捲軸但保留功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            background-color: #020617; /* slate-950 */
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- 5. 主程式碼開始 -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICON 元件定義 ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+        const Icons = {
+            Copy: (p) => <IconBase {...p}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></IconBase>,
+            RefreshCw: (p) => <IconBase {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>,
+            MessageCircle: (p) => <IconBase {...p}><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></IconBase>,
+            Share2: (p) => <IconBase {...p}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></IconBase>,
+            CheckCircle: (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>,
+            User: (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>,
+            Briefcase: (p) => <IconBase {...p}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></IconBase>,
+            Sparkles: (p) => <IconBase {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 5h4"/><path d="M3 9h4"/></IconBase>,
+            ChevronDown: (p) => <IconBase {...p}><path d="m6 9 6 6 6-6"/></IconBase>,
+            ChevronUp: (p) => <IconBase {...p}><path d="m18 15-6-6-6 6"/></IconBase>,
+            Settings: (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>,
+            Phone: (p) => <IconBase {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></IconBase>,
+            Mail: (p) => <IconBase {...p}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></IconBase>,
+            AlertTriangle: (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconBase>,
+            Bot: (p) => <IconBase {...p}><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></IconBase>,
+            X: (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>,
+            RotateCcw: (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>,
+            ArrowUp: (p) => <IconBase {...p}><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></IconBase>,
+            ArrowDown: (p) => <IconBase {...p}><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></IconBase>,
+            Smartphone: (p) => <IconBase {...p}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></IconBase>,
+            Lock: (p) => <IconBase {...p}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>,
+            Plus: (p) => <IconBase {...p}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>,
+            Key: (p) => <IconBase {...p}><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></IconBase>
+        };
+
+        // --- 常數設定區 (可在此修改) ---
+
+        // 預設 Key 設為空，代表預設使用 GAS
+        const DEFAULT_API_KEY = ""; 
+
+        // Google Apps Script (GAS) 部署網址
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxT9RJys6Q6RKLT_Vcl8OWjcMYHoKmXOEW2Qrg1aXPaVn8G4C51GKopfF0dIDGX7ZJl/exec";
+
+        const TEAMS = [
+            { value: "大橘團隊", label: "大橘團隊" },
+            { value: "", label: "無 (不顯示)" }
+        ];
+
+        const STORES = [
+            { value: "", label: "無 (不顯示)" },
+            { value: "有巢氏房屋13期復北立辰店", label: "有巢氏房屋13期復北立辰店" },
+            { value: "永慶不動產台中公益大業店", label: "永慶不動產台中公益大業店" }
+        ];
+
+        // 店頭法定資訊對照表
+        const STORE_INFOS = {
+            "永慶不動產台中公益大業店": `永慶不動產台中公益大業加盟店\n敦璟開發股份有限公司\n張欽弼（102）中市經紀字第00145號`,
+            "有巢氏房屋13期復北立辰店": `有巢氏房屋13期復北立辰加盟店\n立辰開發股份有限公司\n謝玲美(105)中市經紀字第01666號`
+        };
+
+        const SCENARIOS = [
+            { value: "team_advantage", label: "🏆 團隊優勢 (三店連賣/行銷強)", icon: "💪", content: "三家店連賣、台中最大房產資訊網、多媒體行銷、短影音行銷、社群行銷、空拍、現廣等" },
+            { value: "buyer_match", label: "🤝 精準買方 (我有客)", icon: "👥" },
+            { value: "sold_report", label: "💰 成交報喜 (剛成交)", icon: "🎉" },
+            { value: "local_news", label: "🏗️ 市場快訊 (台中利多)", icon: "📢" },
+            { value: "vacant_dev", label: "🏠 閒置開發 (空屋活化)", icon: "🕸️" },
+            { value: "old_house", label: "🏚️ 老屋換新 (危老都更)", icon: "🏗️" },
+        ];
+
+        const PAIN_POINTS = [
+            { value: "none", label: "無特別痛點 (通用)" },
+            { value: "tax", label: "💸 稅務問題 (房地合一/土增稅)" },
+            { value: "inheritance", label: "👨‍👩‍👧‍👦 繼承/分產問題" },
+            { value: "vacant", label: "🏚️ 屋況變差/不想管理" },
+            { value: "privacy", label: "🤫 低調賣/不想被鄰居知" },
+            { value: "rezoning", label: "🚜 重劃區土地買賣" },
+            { value: "cash_flow", label: "💰 現金周轉需求" },
+            { value: "investment", label: "📈 投資獲利了結" },
+        ];
+
+        const TONES = [
+            { id: 'short', label: '簡訊/LINE', icon: '⚡', desc: '短促、多Emoji' },
+            { id: 'neighbor', label: '像鄰居聊天', icon: '☕', desc: '口語、親切' },
+            { id: 'sincere', label: '誠懇溫暖', icon: '❤️', desc: '有禮、同理心' },
+            { id: 'professional', label: '專業數據', icon: '📊', desc: '客觀、分析' },
+            { id: 'direct', label: '直球對決', icon: '🔥', desc: '單刀直入' },
+            { id: 'urgent', label: '十萬火急', icon: '🚨', desc: '急迫、希望能盡快聯繫' },
+        ];
+
+        const FORMATS = [
+            { id: 'letter', label: '實體信函', icon: Icons.Mail, desc: '完整開發信，包含自我介紹與詳細說明' },
+            { id: 'text', label: 'LINE/簡訊', icon: Icons.MessageCircle, desc: '簡短訊息為主，分段清楚' },
+            { id: 'script', label: '電話話術', icon: Icons.Phone, desc: '電話開發，快狠準，不廢話' },
+        ];
+
+        const LOCAL_NEWS_OPTIONS = [
+            { value: "13_rezoning", label: "13期重劃區", keywords: "13期重劃區、低密度高綠覆、捷運綠線沿線、品牌建商進駐" },
+            { value: "14_rezoning", label: "14期重劃區", keywords: "14期重劃區、漢神洲際百貨、台中巨蛋、高綠覆生活圈" },
+            { value: "mrt_rezoning", label: "機捷重劃區", keywords: "機捷特區、好市多商圈、捷運總站、交通便利" },
+            { value: "general_rezoning", label: "重劃區優勢", keywords: "新興重劃區、街廓整齊、增值潛力高、公共建設完善" },
+            { value: "blue_line", label: "捷運藍線核定", keywords: "捷運藍線、交通利多、增值潛力" },
+            { value: "tsmc", label: "台積電二期擴廠", keywords: "中科擴廠、工程師剛需、房價支撐" },
+            { value: "shuinan", label: "水湳經貿園區", keywords: "水湳經貿、外溢效應、重大建設" },
+            { value: "hanshin", label: "漢神洲際百貨", keywords: "漢神百貨、14期重劃區、生活機能" },
+            { value: "74_road", label: "74號快速道路", keywords: "74號道、交通便利、生活圈擴大" },
+        ];
+
+        const STRUCTURE_ITEMS = [
+            { id: 'intro', label: '自我介紹 (我是誰)' },
+            { id: 'pain', label: '痛點 (您擔心什麼)' },
+            { id: 'scenario', label: '切入點 (我有什麼)' },
+        ];
+
+        // --- 通用 UI 元件 ---
+
+        const InputGroup = ({ title, icon: Icon, children, defaultOpen = true }) => {
+            const [isOpen, setIsOpen] = useState(defaultOpen);
+            return (
+                <div className="border border-slate-700 rounded-lg overflow-hidden bg-slate-800/50 mb-4">
+                    <button 
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-full flex items-center justify-between p-3 bg-slate-800 text-slate-200 font-medium hover:bg-slate-700 transition-colors"
+                    >
+                        <div className="flex items-center gap-2 w-full">
+                            {Icon && <Icon size={18} className="text-orange-500 flex-shrink-0" />}
+                            <div className="flex-1">{title}</div>
+                        </div>
+                        {isOpen ? <Icons.ChevronUp size={16} /> : <Icons.ChevronDown size={16} />}
+                    </button>
+                    {isOpen && <div className="p-4 space-y-3">{children}</div>}
+                </div>
+            );
+        };
+
+        const Label = ({ children }) => <label className="block text-xs font-medium text-slate-400 mb-1">{children}</label>;
+
+        const Input = (props) => (
+            <input 
+                {...props}
+                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent placeholder-slate-600 transition-all"
+            />
+        );
+
+        const Select = (props) => (
+            <div className="relative">
+                <select 
+                    {...props}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none cursor-pointer transition-all"
+                />
+                <div className="absolute right-3 top-2.5 text-slate-500 pointer-events-none">
+                    <Icons.ChevronDown size={16} />
+                </div>
+            </div>
+        );
+
+        const MultiSelectChip = ({ label, selected, onClick, icon }) => (
+            <button
+                onClick={onClick}
+                className={`px-3 py-2 rounded-lg text-sm transition-all border flex items-center gap-2 text-left w-full h-full ${
+                    selected 
+                    ? 'bg-orange-600/30 border-orange-500 text-orange-200 shadow-[0_0_10px_rgba(234,88,12,0.3)]' 
+                    : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
+                }`}
+            >
+                <span className="flex-shrink-0">{selected ? '✅' : icon || '⬜'}</span>
+                <span className="break-words">{label}</span>
+            </button>
+        );
+
+        // --- AI 呼叫邏輯 ---
+
+        const generateAIContent = async (data, apiKey) => {
+            const { 
+                agentName, agentPhone, teamName, storeName, targetName, community, scenarios, 
+                tone, buyerType, buyerBudget, soldPrice, soldSpeed, 
+                localNews, painPoints, format, structureOrder 
+            } = data;
+
+            const currentScenarios = scenarios.map(s => {
+                const item = SCENARIOS.find(opt => opt.value === s);
+                return item ? `${item.label} (內容重點: ${item.content || '無'})` : s;
+            }).join(", ");
+
+            const currentPainPoints = painPoints.map(p => {
+                const item = PAIN_POINTS.find(opt => opt.value === p);
+                return item ? item.label : p;
+            }).join(", ");
+
+            const currentTone = TONES.find(t => t.id === tone)?.label || tone;
+            const currentFormat = FORMATS.find(f => f.id === format);
+            const newsItem = LOCAL_NEWS_OPTIONS.find(n => n.value === localNews);
+            
+            const structureLabel = structureOrder.map(id => STRUCTURE_ITEMS.find(i => i.id === id)?.label).join(" -> ");
+
+            // 取得店頭法定資訊
+            const storeLegalInfo = STORE_INFOS[storeName] || "";
+
+            let prompt = `
+                Role: Professional Real Estate Agent in Taichung, Taiwan (Big Orange Team).
+                Task: Write a sales copy for a property owner based on specific inputs.
+                Language: Traditional Chinese (Taiwan), with Taichung local context.
+                
+                [Variables]
+                - Agent Name: ${agentName}
+                - Phone Number: ${agentPhone || "(請填寫電話)"}
+                - Team: ${teamName}
+                - Store: ${storeName}
+                - Target Audience: ${targetName}
+                - Community/Landmark: ${community || "該社區"}
+                - Selected Scenarios (Cut-in Points): ${currentScenarios}
+                - Selected Pain Points: ${currentPainPoints}
+                - Tone/Style: ${currentTone}
+                - Format: ${currentFormat?.label} (${currentFormat?.desc})
+                - Structure Flow: ${structureLabel}
+                
+                [Details for Scenarios]
+                ${scenarios.includes('buyer_match') ? `- Buyer Info: ${buyerType || "誠意買方"}, Budget: ${buyerBudget || "符合行情"}` : ''}
+                ${scenarios.includes('sold_report') ? `- Sold Price: ${soldPrice || "保密"}, Speed: ${soldSpeed || "快速"}` : ''}
+                ${scenarios.includes('local_news') ? `- Topic: ${newsItem?.label}, Keywords: ${newsItem?.keywords}` : ''}
+                
+                [Instructions]
+                1. **Strictly follow the Structure Flow**: Organize the content in the order specified (${structureLabel}).
+                2. **Format Specifics & Emoji Rules**:
+                - **Phone Script (電話話術)**: Use dialogue format. Concise. **STRICTLY NO EMOJIS.**
+                - **Physical Letter (實體信函)**: Formal business layout. **STRICTLY NO EMOJIS.**
+                - **LINE/SMS**: You MAY use emojis (e.g., 🌟, 🏡) to make it engaging, but do not overuse.
+                3. **Content**:
+                - Integrate ALL selected Scenarios and Pain Points naturally.
+                - If "Team Advantage" is selected, mention: "三家店連賣、台中最大房產資訊網、多媒體行銷...".
+                - Address pain points with empathy and professional solutions.
+                - Ensure the content includes the Agent Name and Phone Number clearly at the end.
+                ${storeLegalInfo ? `- **MANDATORY**: At the VERY BOTTOM of the message, you MUST append the following store legal information exactly as written:\n\n${storeLegalInfo}\n\n` : ''}
+                4. **Output Style - CRITICAL**: 
+                - **PURE PLAIN TEXT ONLY**. 
+                - **DO NOT** use any Markdown formatting.
+                - **DO NOT** use symbols like '**' (bold), '##' (header), or '__' (italic).
+                - **DO NOT** include section headers like "[痛點：...]" or "[切入點：...]". The content should flow naturally as a single message.
+                - Just write the text naturally with standard punctuation.
+            `;
+
+            // 重試機制參數
+            const delays = [1000, 2000, 4000, 8000, 16000]; // 1s, 2s, 4s, 8s, 16s
+            let lastError = null;
+
+            for (let attempt = 0; attempt <= delays.length; attempt++) {
+                try {
+                    let rawText = "";
+
+                    if (apiKey) {
+                        // --- 情況 A: 使用者提供自訂 Gemini API Key (Direct Call) ---
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error?.message || `Gemini API HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        if (result.error) throw new Error(result.error.message);
+                        rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    } else {
+                        // --- 情況 B: 未提供 Key，使用預設 GAS 伺服器 (Proxy Call) ---
+                        // 使用 text/plain 以符合 GAS 的 CORS 與接收要求
+                        const response = await fetch(GAS_API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ prompt: prompt })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`GAS HTTP error! status: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        // 檢查是否有錯誤
+                        if (data.error) {
+                            throw new Error(`GAS 回傳錯誤: ${data.error}`);
+                        }
+
+                        // 解析回傳結構
+                        if (data.candidates && data.candidates.length > 0) {
+                            rawText = data.candidates[0].content.parts[0].text;
+                        } else {
+                            // 嘗試其他可能的欄位，或是回傳預設訊息
+                            rawText = data.text || "AI 沒有回傳任何內容。";
+                        }
+                    }
+
+                    if (!rawText) rawText = "AI 生成無內容，請稍後再試。";
+
+                    // 後處理：強制清除 Markdown 符號及特定標題
+                    let cleanText = rawText
+                        .replace(/\*\*/g, '')   // 移除粗體符號
+                        .replace(/##/g, '')     // 移除標題符號
+                        .replace(/__/g, '')     // 移除斜體符號
+                        .replace(/^#+\s/gm, '') // 移除行首的井字號標題
+                        .replace(/\[痛點：您擔心什麼\]/g, '') // 移除特定結構標籤 (完整)
+                        .replace(/\[切入點：我有什麼\]/g, '') // 移除特定結構標籤 (完整)
+                        .replace(/\[自我介紹 \(我是誰\)\]/g, '') // 移除特定結構標籤 (完整)
+                        .replace(/\[痛點\]/g, '') // 移除簡短標籤
+                        .replace(/\[切入點\]/g, '') // 移除簡短標籤
+                        .replace(/\n\s*\n/g, '\n\n'); // 移除多餘空行，保持段落整潔
+
+                    return cleanText;
+
+                } catch (error) {
+                    lastError = error;
+                    // 如果是最後一次嘗試，就不再等待，直接跳出迴圈
+                    if (attempt === delays.length) break;
+                    
+                    console.warn(`Attempt ${attempt + 1} failed, retrying in ${delays[attempt]}ms...`, error);
+                    // 等待一段時間後重試
+                    await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+                }
+            }
+
+            // 若所有嘗試都失敗
+            console.error("AI Error after retries:", lastError);
+            const providerName = apiKey ? "自訂 API Key" : "預設伺服器 (GAS)";
+            return `⚠️ AI 生成失敗 (已自動重試 5 次) - ${providerName}：\n${lastError?.message}\n\n請檢查網路連線，或稍待片刻再試。`;
+        };
+
+        // --- 主程式元件 ---
+
+        function App() {
+            // 讀取本地儲存的姓名、電話與 API Key
+            const savedAgentName = localStorage.getItem("gen_agentName") || "";
+            const savedAgentPhone = localStorage.getItem("gen_agentPhone") || "";
+            const savedApiKey = localStorage.getItem("gen_apiKey") || "";
+
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [passwordInput, setPasswordInput] = useState("");
+            const [loginApiKey, setLoginApiKey] = useState(savedApiKey); // 登入畫面顯示的 Key
+            const [loginError, setLoginError] = useState(false);
+
+            // 自訂輸入的 State
+            const [customScenarioInput, setCustomScenarioInput] = useState("");
+            const [customPainPointInput, setCustomPainPointInput] = useState("");
+
+            // 儲存狀態指示燈
+            const [showSaveIndicator, setShowSaveIndicator] = useState(false);
+
+            // 主程式使用的 API Key State
+            const [apiKey, setApiKey] = useState(savedApiKey);
+
+            const [formData, setFormData] = useState({
+                agentName: savedAgentName,
+                agentPhone: savedAgentPhone, 
+                teamName: "大橘團隊",
+                storeName: "",
+                targetName: "屋主大哥/大姐",
+                community: "",
+                scenarios: ["buyer_match"], 
+                tone: "neighbor",
+                format: "letter", // 預設改為 實體信函
+                painPoints: ["none"], 
+                structureOrder: ['intro', 'pain', 'scenario'],
+                buyerType: "",
+                buyerBudget: "",
+                soldPrice: "",
+                soldSpeed: "",
+                localNews: "13_rezoning"
+            });
+
+            const [generatedText, setGeneratedText] = useState("");
+            const [showToast, setShowToast] = useState(false);
+            const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(true);
+            const [showSettings, setShowSettings] = useState(false);
+            // Settings Modal 中的輸入 State
+            const [settingsApiKeyInput, setSettingsApiKeyInput] = useState("");
+            const [isLoading, setIsLoading] = useState(false);
+            
+            const outputRef = useRef(null);
+
+            // 監聽 formData 的變化，將姓名與電話寫入 localStorage
+            useEffect(() => {
+                localStorage.setItem("gen_agentName", formData.agentName);
+                localStorage.setItem("gen_agentPhone", formData.agentPhone);
+                
+                if (formData.agentName || formData.agentPhone) {
+                    setShowSaveIndicator(true);
+                    const timer = setTimeout(() => {
+                        setShowSaveIndicator(false);
+                    }, 2000);
+                    return () => clearTimeout(timer);
+                }
+            }, [formData.agentName, formData.agentPhone]);
+
+            // 當 apiKey 改變時，更新 localStorage 與 Settings input
+            useEffect(() => {
+                if (apiKey) {
+                    localStorage.setItem("gen_apiKey", apiKey);
+                } else {
+                    localStorage.removeItem("gen_apiKey");
+                }
+                setSettingsApiKeyInput(apiKey);
+            }, [apiKey]);
+
+            const currentFormat = FORMATS.find(f => f.id === formData.format);
+            const FormatIcon = currentFormat ? currentFormat.icon : Icons.MessageCircle;
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleScenarioToggle = (value) => {
+                setFormData(prev => {
+                    const current = prev.scenarios;
+                    if (current.includes(value)) {
+                        return { ...prev, scenarios: current.filter(item => item !== value) }; 
+                    } else {
+                        return { ...prev, scenarios: [...current, value] }; 
+                    }
+                });
+            };
+
+            const handlePainPointToggle = (value) => {
+                setFormData(prev => {
+                    const current = prev.painPoints;
+                    if (value === 'none') return { ...prev, painPoints: ['none'] };
+                    
+                    let newPoints = current.includes('none') ? [] : [...current];
+                    
+                    if (newPoints.includes(value)) {
+                        newPoints = newPoints.filter(item => item !== value);
+                    } else {
+                        newPoints.push(value);
+                    }
+                    
+                    if (newPoints.length === 0) newPoints = ['none'];
+                    
+                    return { ...prev, painPoints: newPoints };
+                });
+            };
+
+            const addCustomScenario = () => {
+                if (customScenarioInput.trim()) {
+                    setFormData(prev => ({
+                        ...prev,
+                        scenarios: [...prev.scenarios, customScenarioInput.trim()]
+                    }));
+                    setCustomScenarioInput("");
+                }
+            };
+
+            const addCustomPainPoint = () => {
+                if (customPainPointInput.trim()) {
+                    setFormData(prev => ({
+                        ...prev,
+                        painPoints: prev.painPoints.filter(p => p !== 'none').concat(customPainPointInput.trim())
+                    }));
+                    setCustomPainPointInput("");
+                }
+            };
+
+            const moveStructure = (index, direction) => {
+                setFormData(prev => {
+                    const newOrder = [...prev.structureOrder];
+                    if (direction === 'up' && index > 0) {
+                        [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
+                    } else if (direction === 'down' && index < newOrder.length - 1) {
+                        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+                    }
+                    return { ...prev, structureOrder: newOrder };
+                });
+            };
+
+            const handleReset = () => {
+                setFormData({
+                    agentName: localStorage.getItem("gen_agentName") || "",
+                    agentPhone: localStorage.getItem("gen_agentPhone") || "",
+                    teamName: "大橘團隊",
+                    storeName: "",
+                    targetName: "屋主大哥/大姐",
+                    community: "",
+                    scenarios: ["buyer_match"],
+                    tone: "neighbor",
+                    format: "letter", // 預設為實體信函
+                    painPoints: ["none"],
+                    structureOrder: ['intro', 'pain', 'scenario'],
+                    buyerType: "",
+                    buyerBudget: "",
+                    soldPrice: "",
+                    soldSpeed: "",
+                    localNews: "13_rezoning"
+                });
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (passwordInput === "8899") {
+                    setIsAuthenticated(true);
+                    setLoginError(false);
+                    // 登入時如果有輸入 Key，就更新 State (useEffect 會自動存到 localStorage)
+                    if (loginApiKey.trim()) {
+                        setApiKey(loginApiKey.trim());
+                    }
+                } else {
+                    setLoginError(true);
+                }
+            };
+
+            const handleSaveSettings = () => {
+                setApiKey(settingsApiKeyInput.trim());
+                setShowSettings(false);
+            };
+
+            const handleClearSettings = () => {
+                setApiKey("");
+                setSettingsApiKeyInput("");
+                localStorage.removeItem("gen_apiKey");
+                // setShowSettings(false); // 可以選擇是否關閉視窗
+            };
+
+            const generate = async () => {
+                setIsLoading(true);
+                if (outputRef.current) {
+                    setTimeout(() => {
+                        outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+                const text = await generateAIContent(formData, apiKey);
+                setGeneratedText(text);
+                setIsLoading(false);
+            };
+
+            const handleCopy = () => {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(generatedText)
+                        .then(() => triggerToast())
+                        .catch(err => fallbackCopyTextToClipboard(generatedText));
+                } else {
+                    fallbackCopyTextToClipboard(generatedText);
+                }
+            };
+
+            const fallbackCopyTextToClipboard = (text) => {
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    const successful = document.execCommand('copy');
+                    if (successful) triggerToast();
+                    document.body.removeChild(textArea);
+                } catch (err) {
+                    console.error('Fallback copy error:', err);
+                }
+            };
+
+            const triggerToast = () => {
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 2000);
+            };
+
+            const lineShareUrl = `https://line.me/R/msg/text/?${encodeURIComponent(generatedText)}`;
+
+            if (!isAuthenticated) {
+                return (
+                    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-slate-200">
+                        <div className="bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 w-full max-w-sm animate-in fade-in zoom-in-95 duration-300">
+                            <div className="flex justify-center mb-6">
+                                <div className="p-4 rounded-full bg-slate-700/50 shadow-inner">
+                                    <Icons.Lock size={32} className="text-orange-500" />
+                                </div>
+                            </div>
+                            <h2 className="text-2xl font-bold text-white text-center mb-2">房仲開發信產生器 <span className="text-orange-500 text-sm">PRO v7.1</span></h2>
+                            <p className="text-slate-400 text-center text-sm mb-6">請輸入密碼以繼續使用</p>
+                            
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <input
+                                        type="password"
+                                        value={passwordInput}
+                                        onChange={(e) => setPasswordInput(e.target.value)}
+                                        placeholder="請輸入密碼"
+                                        className={`w-full bg-slate-900 border rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-center tracking-widest placeholder:tracking-normal placeholder:text-slate-600 ${loginError ? 'border-red-500' : 'border-slate-700'}`}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* API Key 輸入區 */}
+                                <div>
+                                    <div className="relative">
+                                        <input 
+                                            type="text"
+                                            value={loginApiKey}
+                                            onChange={(e) => setLoginApiKey(e.target.value)}
+                                            placeholder="輸入個人 API Key (選填)"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
+                                        />
+                                        <div className="absolute right-3 top-3 text-slate-500 pointer-events-none">
+                                            <Icons.Key size={16} />
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                                        💡 <span className="text-yellow-500">建議輸入個人免費 API Key</span> 以避免共用額度額滿。
+                                        若未輸入，系統將使用預設的 GAS 請求 (可能會有次數限制)。
+                                        輸入後將自動儲存於本地端，下次無需重複輸入。
+                                    </p>
+                                </div>
+                                
+                                {loginError && (
+                                    <div className="text-red-400 text-xs text-center flex items-center justify-center gap-1 animate-pulse">
+                                        <Icons.AlertTriangle size={12} /> 密碼錯誤，請重新輸入
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3 rounded-lg transition-all active:scale-95 shadow-lg shadow-orange-500/20"
+                                >
+                                    進入系統
+                                </button>
+                            </form>
+                            <div className="mt-6 text-center text-xs text-slate-500">
+                                程式開發：憲哥
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-orange-500/30 pb-10">
+                    {/* Header */}
+                    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-20 shadow-md">
+                        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className={`p-2 rounded-lg shadow-lg bg-gradient-to-br from-orange-500 to-red-600`}>
+                                    <Icons.Bot size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                                        房仲開發信產生器 <span className="text-orange-500 text-xs">PRO v7.1</span>
+                                    </h1>
+                                    <p className="text-xs text-slate-400">大橘團隊 x 憲哥</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                {/* 黃色醒目按鈕 */}
+                                <button 
+                                    onClick={() => setShowSettings(true)}
+                                    className="px-3 py-2 bg-yellow-500 hover:bg-yellow-400 text-slate-900 rounded-md font-bold text-xs flex items-center gap-1 shadow-lg shadow-yellow-500/20 transition-all active:scale-95"
+                                >
+                                    <Icons.Settings size={16} />
+                                    <span className="hidden md:inline">更換 API 金鑰</span>
+                                </button>
+                                <button 
+                                    onClick={() => setIsMobilePanelOpen(!isMobilePanelOpen)}
+                                    className="md:hidden p-2 text-slate-400 hover:text-white rounded-md hover:bg-slate-800"
+                                >
+                                    <div className={`transform transition-transform ${isMobilePanelOpen ? 'rotate-180' : ''}`}>
+                                        <Icons.ChevronDown size={20} />
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Settings Modal */}
+                    {showSettings && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
+                                <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
+                                    <h3 className="font-bold text-white flex items-center gap-2">
+                                        <Icons.Settings size={18} /> API 金鑰設定
+                                    </h3>
+                                    <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white">
+                                        <Icons.X size={20} />
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <p className="text-sm text-slate-300">
+                                        您可以在此更換您的個人 API Key。設定後將自動覆蓋舊的 Key 並儲存於本地端。
+                                    </p>
+                                    <div>
+                                        <Label>Google Gemini API Key</Label>
+                                        <Input 
+                                            type="password" 
+                                            value={settingsApiKeyInput} 
+                                            onChange={(e) => setSettingsApiKeyInput(e.target.value)}
+                                            placeholder="輸入新的 API Key..." 
+                                        />
+                                    </div>
+                                    
+                                    <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50 text-xs text-slate-400">
+                                        <p>目前狀態：
+                                            {apiKey ? (
+                                                <span className="text-green-400 font-bold ml-1">使用個人 Key ✅</span>
+                                            ) : (
+                                                <span className="text-yellow-500 font-bold ml-1">使用預設 GAS (共用) ⚠️</span>
+                                            )}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-700">
+                                        <button 
+                                            onClick={handleClearSettings}
+                                            className="text-red-400 hover:text-red-300 flex items-center gap-1"
+                                        >
+                                            <Icons.RotateCcw size={12} /> 清除並使用預設值
+                                        </button>
+                                        <span className="text-slate-500">Key 僅存於本機</span>
+                                    </div>
+                                </div>
+                                <div className="p-4 border-t border-slate-700 bg-slate-800 flex justify-end gap-2">
+                                    <button 
+                                        onClick={() => setShowSettings(false)}
+                                        className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+                                    >
+                                        取消
+                                    </button>
+                                    <button 
+                                        onClick={handleSaveSettings}
+                                        className="bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                    >
+                                        儲存變更
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <main className="max-w-7xl mx-auto p-4 md:p-6 flex flex-col md:flex-row gap-6">
+                        
+                        {/* Left Panel: Inputs */}
+                        <div className={`md:w-1/3 lg:w-1/4 space-y-4 ${isMobilePanelOpen ? 'block' : 'hidden md:block'}`}>
+                            
+                            <InputGroup 
+                                title={
+                                    <div className="flex justify-between items-center w-full pr-4">
+                                        <span>1. 業務姓名與團隊</span>
+                                        {showSaveIndicator && (
+                                            <span className="text-xs text-green-400 flex items-center gap-1 animate-in fade-in">
+                                                <Icons.CheckCircle size={12} /> 已自動儲存
+                                            </span>
+                                        )}
+                                    </div>
+                                } 
+                                icon={Icons.User}
+                            >
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <div>
+                                            <Label>業務姓名</Label>
+                                            <Input name="agentName" value={formData.agentName} onChange={handleChange} placeholder="輸入您的稱呼 (例: 小陳)" />
+                                        </div>
+                                        <div>
+                                            <Label>聯絡電話</Label>
+                                            <div className="relative">
+                                                <Input name="agentPhone" value={formData.agentPhone} onChange={handleChange} placeholder="09xx-xxx-xxx" />
+                                                <div className="absolute right-3 top-2.5 text-slate-500 pointer-events-none">
+                                                    <Icons.Smartphone size={16} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <div>
+                                            <Label>團隊名稱</Label>
+                                            <Select name="teamName" value={formData.teamName} onChange={handleChange}>
+                                                {TEAMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label>分店名稱</Label>
+                                            <Select name="storeName" value={formData.storeName} onChange={handleChange}>
+                                                {STORES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </InputGroup>
+
+                            <InputGroup title="2. 切入點 (複選)" icon={Icons.Briefcase}>
+                                <div>
+                                    <Label>目標稱呼</Label>
+                                    <Input name="targetName" value={formData.targetName} onChange={handleChange} placeholder="屋主大哥" />
+                                </div>
+                                
+                                <div className="mt-2">
+                                    <Label>社區 / 地標 / 區域 / 類型</Label>
+                                    <Input 
+                                        name="community" 
+                                        value={formData.community} 
+                                        onChange={handleChange} 
+                                        placeholder="例如：惠宇觀市政、七期、南區、農地..." 
+                                    />
+                                    <p className="text-[10px] text-slate-500 mt-1">
+                                        💡 提示：可輸入具體社區，也可以輸入區域（如：七期、南區）或是物件類型（如：農地、重劃區）。
+                                    </p>
+                                </div>
+                                
+                                <div className="mt-3">
+                                    <Label>選擇開發切入點 (可多選)</Label>
+                                    {/* 網格佈局 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                                        {SCENARIOS.map(s => (
+                                            <MultiSelectChip
+                                                key={s.value}
+                                                label={s.label}
+                                                icon={s.icon}
+                                                selected={formData.scenarios.includes(s.value)}
+                                                onClick={() => handleScenarioToggle(s.value)}
+                                            />
+                                        ))}
+                                        {/* 顯示使用者自訂的切入點 */}
+                                        {formData.scenarios
+                                            .filter(s => !SCENARIOS.find(def => def.value === s))
+                                            .map((s, idx) => (
+                                                <MultiSelectChip
+                                                    key={`custom-scenario-${idx}`}
+                                                    label={s}
+                                                    icon="✨"
+                                                    selected={true}
+                                                    onClick={() => handleScenarioToggle(s)}
+                                                />
+                                        ))}
+                                    </div>
+                                    
+                                    {/* 自訂切入點輸入框 */}
+                                    <div className="flex gap-2 mt-2">
+                                        <Input 
+                                            value={customScenarioInput}
+                                            onChange={(e) => setCustomScenarioInput(e.target.value)}
+                                            placeholder="輸入自訂切入點 (例：急售出國)..."
+                                            onKeyDown={(e) => e.key === 'Enter' && addCustomScenario()}
+                                        />
+                                        <button 
+                                            onClick={addCustomScenario}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded border border-slate-600 flex-shrink-0"
+                                            title="新增選項"
+                                        >
+                                            <Icons.Plus size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Dynamic Inputs */}
+                                <div className="pt-2 border-t border-slate-700/50 mt-2 space-y-3">
+                                    {formData.scenarios.includes('buyer_match') && (
+                                        <div className="bg-slate-900/50 p-3 rounded border border-slate-700/50 animate-in fade-in space-y-2">
+                                            <p className="text-xs text-orange-400 font-bold mb-1">👥 買方設定</p>
+                                            <div>
+                                                <Label>買方背景</Label>
+                                                <Input name="buyerType" value={formData.buyerType} onChange={handleChange} placeholder="例如：中科工程師" />
+                                            </div>
+                                            <div>
+                                                <Label>買方預算 (萬)</Label>
+                                                <Input name="buyerBudget" value={formData.buyerBudget} onChange={handleChange} placeholder="例如：2500" type="number" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {formData.scenarios.includes('sold_report') && (
+                                        <div className="bg-slate-900/50 p-3 rounded border border-slate-700/50 animate-in fade-in space-y-2">
+                                            <p className="text-xs text-orange-400 font-bold mb-1">🎉 成交設定</p>
+                                            <div>
+                                                <Label>成交總價 (萬)</Label>
+                                                <Input name="soldPrice" value={formData.soldPrice} onChange={handleChange} placeholder="例如：3200" type="number" />
+                                            </div>
+                                            <div>
+                                                <Label>成交速度</Label>
+                                                <Input name="soldSpeed" value={formData.soldSpeed} onChange={handleChange} placeholder="例如：三天秒殺" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    {formData.scenarios.includes('local_news') && (
+                                        <div className="bg-slate-900/50 p-3 rounded border border-slate-700/50 animate-in fade-in">
+                                            <p className="text-xs text-orange-400 font-bold mb-1">📢 話題設定</p>
+                                            <Label>選擇話題</Label>
+                                            <Select name="localNews" value={formData.localNews} onChange={handleChange}>
+                                                {LOCAL_NEWS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                            </Select>
+                                        </div>
+                                    )}
+                                </div>
+                            </InputGroup>
+
+                            <InputGroup title="3. 策略與痛點 (複選)" icon={Icons.Bot}>
+                                <div>
+                                    <Label>屋主痛點猜測 (可多選)</Label>
+                                    {/* 網格佈局 */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                                        {PAIN_POINTS.map(p => (
+                                            <MultiSelectChip
+                                                key={p.value}
+                                                label={p.label}
+                                                selected={formData.painPoints.includes(p.value)}
+                                                onClick={() => handlePainPointToggle(p.value)}
+                                            />
+                                        ))}
+                                        {/* 顯示使用者自訂的痛點 */}
+                                        {formData.painPoints
+                                            .filter(p => !PAIN_POINTS.find(def => def.value === p))
+                                            .map((p, idx) => (
+                                                <MultiSelectChip
+                                                    key={`custom-pain-${idx}`}
+                                                    label={p}
+                                                    icon="🔴"
+                                                    selected={true}
+                                                    onClick={() => handlePainPointToggle(p)}
+                                                />
+                                        ))}
+                                    </div>
+                                    
+                                    {/* 自訂痛點輸入框 */}
+                                    <div className="flex gap-2 mt-2">
+                                        <Input 
+                                            value={customPainPointInput}
+                                            onChange={(e) => setCustomPainPointInput(e.target.value)}
+                                            placeholder="輸入自訂痛點 (例：急需現金)..."
+                                            onKeyDown={(e) => e.key === 'Enter' && addCustomPainPoint()}
+                                        />
+                                        <button 
+                                            onClick={addCustomPainPoint}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded border border-slate-600 flex-shrink-0"
+                                            title="新增選項"
+                                        >
+                                            <Icons.Plus size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </InputGroup>
+
+                            <InputGroup title="4. 語氣與格式" icon={Icons.MessageCircle}>
+                                <div className="space-y-5">
+                                    
+                                    {/* Output Format */}
+                                    <div>
+                                        <Label>輸出格式 (Output Format)</Label>
+                                        <div className="grid grid-cols-3 gap-2 mt-1">
+                                            {FORMATS.map(fmt => (
+                                                <button
+                                                    key={fmt.id}
+                                                    onClick={() => setFormData(prev => ({ ...prev, format: fmt.id }))}
+                                                    className={`flex flex-col items-center justify-center p-2 rounded border transition-all ${
+                                                        formData.format === fmt.id 
+                                                        ? 'bg-blue-500/20 border-blue-500 text-blue-400' 
+                                                        : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                    }`}
+                                                    title={fmt.desc}
+                                                >
+                                                    <fmt.icon size={16} className="mb-1" />
+                                                    <span className="text-xs">{fmt.label.split('/')[0]}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 mt-1">
+                                            {FORMATS.find(f => f.id === formData.format)?.desc}
+                                        </p>
+                                    </div>
+
+                                    {/* Structure Ordering */}
+                                    <div>
+                                        <Label>文案結構順序 (點箭頭調整)</Label>
+                                        <div className="bg-slate-900 rounded border border-slate-700 p-2 space-y-1 mt-1">
+                                            {formData.structureOrder.map((itemId, index) => {
+                                                const item = STRUCTURE_ITEMS.find(i => i.id === itemId);
+                                                return (
+                                                    <div key={itemId} className="flex items-center justify-between bg-slate-800 px-3 py-2 rounded text-sm text-slate-300">
+                                                        <span>{index + 1}. {item?.label}</span>
+                                                        <div className="flex gap-1">
+                                                            <button 
+                                                                onClick={() => moveStructure(index, 'up')}
+                                                                disabled={index === 0}
+                                                                className="p-1 hover:bg-slate-700 rounded disabled:opacity-30"
+                                                            >
+                                                                <Icons.ArrowUp size={14} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => moveStructure(index, 'down')}
+                                                                disabled={index === formData.structureOrder.length - 1}
+                                                                className="p-1 hover:bg-slate-700 rounded disabled:opacity-30"
+                                                            >
+                                                                <Icons.ArrowDown size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Tone */}
+                                    <div>
+                                        <Label>語氣風格 (Tone)</Label>
+                                        <div className="grid grid-cols-2 gap-2 mt-1">
+                                            {TONES.map(mode => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => setFormData(prev => ({ ...prev, tone: mode.id }))}
+                                                    className={`flex items-center gap-2 px-2 py-2 rounded border transition-all text-left ${
+                                                        formData.tone === mode.id 
+                                                        ? 'bg-orange-500/20 border-orange-500 text-orange-400' 
+                                                        : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    <span className="text-lg">{mode.icon}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-bold">{mode.label}</span>
+                                                        <span className="text-[9px] opacity-70">{mode.desc}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </InputGroup>
+                            
+                            <button 
+                                onClick={handleReset}
+                                className="w-full flex items-center justify-center gap-2 p-2 bg-slate-800 hover:bg-red-900/30 text-slate-400 hover:text-red-400 rounded-lg border border-transparent hover:border-red-900/50 transition-all text-sm mb-3"
+                            >
+                                <Icons.RotateCcw size={14} /> 重置所有設定
+                            </button>
+
+                            <button 
+                                onClick={generate}
+                                className="w-full flex items-center justify-center gap-2 p-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg font-bold shadow-lg shadow-orange-500/20 active:scale-95 transition-all text-base border border-orange-500 animate-in fade-in zoom-in-95"
+                            >
+                                <Icons.Sparkles size={18} /> AI 立即產出
+                            </button>
+
+                        </div>
+
+                        {/* Right Panel: Output */}
+                        <div ref={outputRef} className="md:w-2/3 lg:w-3/4 flex flex-col h-full min-h-[500px]">
+                            
+                            {/* Card */}
+                            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col h-full overflow-hidden relative">
+                                
+                                {/* Loading Overlay */}
+                                {isLoading && (
+                                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center flex-col gap-3">
+                                        <Icons.RefreshCw className="animate-spin text-orange-500" size={40} />
+                                        <p className="text-orange-400 font-medium animate-pulse">
+                                            AI 正在組裝最強文案...
+                                        </p>
+                                        <p className="text-slate-400 text-xs">正在分析：{formData.scenarios.length} 個切入點、{formData.painPoints.length} 個痛點</p>
+                                    </div>
+                                )}
+
+                                {/* Toolbar */}
+                                <div className="p-4 border-b border-slate-700 flex flex-wrap items-center justify-between gap-3 bg-slate-800/80 backdrop-blur">
+                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[60%]">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold tracking-wider uppercase flex-shrink-0 flex items-center gap-1 ${
+                                            formData.format === 'text' ? 'bg-green-500/20 text-green-400' :
+                                            formData.format === 'letter' ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-pink-500/20 text-pink-400'
+                                        }`}>
+                                            <FormatIcon size={12} />
+                                            {currentFormat?.label.split('/')[0]}
+                                        </span>
+                                        
+                                        {formData.scenarios.length > 0 && (
+                                            <span className="px-2 py-1 rounded text-xs font-bold bg-blue-500/20 text-blue-400 flex-shrink-0">
+                                                {formData.scenarios.length} 個切入點
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={generate}
+                                            className="flex items-center gap-2 px-4 py-1.5 text-sm rounded-lg transition-all border shadow-lg active:scale-95 bg-slate-700 hover:bg-slate-600 text-slate-200 border-slate-600"
+                                        >
+                                            <Icons.RefreshCw size={14} />
+                                            <span>重新生成</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Text Area */}
+                                <div className="flex-1 relative group bg-slate-900/50">
+                                    <textarea
+                                        id="output-textarea"
+                                        value={generatedText}
+                                        onChange={(e) => setGeneratedText(e.target.value)}
+                                        placeholder="等待生成中... 請設定左側參數並點擊左下角的「AI 立即產出」"
+                                        className="w-full h-full min-h-[500px] p-6 bg-transparent text-slate-100 text-base leading-relaxed resize-y focus:outline-none transition-opacity font-mono"
+                                        spellCheck="false"
+                                    />
+                                    {generatedText && (
+                                        <div className="absolute top-4 right-4 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span className="text-xs text-slate-500 bg-slate-900/80 px-2 py-1 rounded">可直接編輯</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Action Footer */}
+                                <div className="p-4 bg-slate-800 border-t border-slate-700 flex flex-col sm:flex-row gap-3">
+                                    <button 
+                                        onClick={handleCopy}
+                                        className="flex-1 flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-lg transition-all active:scale-95 border border-slate-600"
+                                    >
+                                        {showToast ? <Icons.CheckCircle size={20} className="text-green-500" /> : <Icons.Copy size={20} />}
+                                        {showToast ? '已複製！' : '複製文案'}
+                                    </button>
+                                    
+                                    <a 
+                                        href={lineShareUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#06C755] hover:bg-[#05b54d] text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-green-500/20 transition-all active:scale-95"
+                                    >
+                                        <Icons.Share2 size={20} />
+                                        <span className="hidden sm:inline">LINE 分享</span>
+                                        <span className="sm:hidden">LINE</span>
+                                    </a>
+                                </div>
+
+                            </div>
+
+                            <div className="mt-4 text-center text-slate-500 text-xs flex flex-col gap-1">
+                                <p>💡 提示：按住生成框右下角可自由拖拉高度。不滿意結果？點擊 <Icons.RefreshCw className="inline" size={12}/> 可請 AI 重新潤飾。</p>
+                                <p className="mt-2 opacity-50">程式開發：憲哥</p>
+                            </div>
+
+                        </div>
+                    </main>
+
+                    {/* Toast Notification */}
+                    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2 rounded-full shadow-xl border border-slate-700 flex items-center gap-2 transition-all duration-300 transform ${showToast ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+                        <Icons.CheckCircle size={16} className="text-green-500" />
+                        <span className="text-sm font-medium">文案已複製到剪貼簿</span>
+                    </div>
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
