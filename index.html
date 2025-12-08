@@ -41,8 +41,47 @@
         }
         body {
             background-color: #020617; /* slate-950 */
+            -webkit-user-select: none; /* Chrome/Safari/Opera */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        }
+        /* 允許輸入框可以選取文字 */
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
     </style>
+
+    <!-- 防盜腳本：禁止右鍵與開發者工具 -->
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        
+        document.onkeydown = function(e) {
+            // F12
+            if(e.keyCode == 123) {
+                return false;
+            }
+            // Ctrl+Shift+I (Inspect)
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+Shift+J (Console)
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+Shift+C (Element Inspector)
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+U (View Source)
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+                return false;
+            }
+        };
+    </script>
 </head>
 <body>
     <div id="root"></div>
@@ -88,6 +127,9 @@
 
         // Google Apps Script (GAS) 部署網址
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxT9RJys6Q6RKLT_Vcl8OWjcMYHoKmXOEW2Qrg1aXPaVn8G4C51GKopfF0dIDGX7ZJl/exec";
+
+        // Base64 Encoded Password ("8899" -> "ODg5OQ==")
+        const CORRECT_PASS_B64 = "ODg5OQ==";
 
         const TEAMS = [
             { value: "大橘團隊", label: "大橘團隊" },
@@ -543,7 +585,8 @@
 
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (passwordInput === "8899") {
+                // 驗證密碼: Base64 解碼比對
+                if (btoa(passwordInput) === CORRECT_PASS_B64) {
                     setIsAuthenticated(true);
                     setLoginError(false);
                     // 登入時如果有輸入 Key，就更新 State (useEffect 會自動存到 localStorage)
